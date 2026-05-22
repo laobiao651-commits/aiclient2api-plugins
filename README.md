@@ -1,5 +1,7 @@
 # AIClient2API 用户插件集合
 
+
+
 本仓库收录了 [AIClient2API](https://github.com/justlovemaki/AIClient2API) 的用户自制插件。
 
 ## 如何使用插件市场
@@ -160,7 +162,3 @@ socks5://9.10.11.12:1080
 - 导入 / 导出配置
 
 ---
-
-## 反馈与贡献
-
-如有问题或建议，欢迎提交 [Issue](https://github.com/laobiao651-commits/aiclient2api-plugins/issues)。
