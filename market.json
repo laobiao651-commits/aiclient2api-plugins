@@ -1,0 +1,10 @@
+[
+  {
+    "id": "proxy-binding",
+    "name": "号池代理绑定",
+    "version": "1.0.3",
+    "minSystemVersion": "3.1.1",
+    "description": "为号池中每个账号独立绑定出站代理IP，支持代理池管理、批量添加和批量绑定",
+    "downloadUrl": "https://github.com/laobiao651-commits/aiclient2api-plugins/releases/download/v1.0.3/proxy-binding.zip"
+  }
+]

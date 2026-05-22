@@ -1,0 +1,888 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IP 代理绑定管理</title>
+  <link rel="stylesheet" href="app/base.css">
+  <link rel="stylesheet" href="ip-node-proxy.css">
+</head>
+<body>
+  <div id="toast-container"></div>
+
+  <div class="app-container">
+    <header class="header glass">
+      <div class="brand">
+        <h1>代理绑定管理</h1>
+      </div>
+      <div class="header-right">
+        <!-- API Key 配置 -->
+        <div class="apikey-bar glass" id="apikeyBar">
+          <span class="apikey-label">API Key</span>
+          <input type="password" id="apikeyInput" class="apikey-input" placeholder="输入 API Key 或后台 Token">
+          <button class="btn btn-sm btn-primary" id="apikeyConfirmBtn">连接</button>
+          <button class="btn btn-sm" id="apikeyToggleBtn" title="显示/隐藏">显示</button>
+          <button class="btn btn-sm btn-danger" id="apikeyLogoutBtn" title="清除凭证" style="display:none">✕</button>
+        </div>
+        <button class="theme-toggle glass" id="themeToggle" title="切换主题">
+          <svg id="themeIconDark" class="theme-icon-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+          <svg id="themeIconLight" class="theme-icon-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+        </button>
+        <div class="actions" style="margin-left: 12px;">
+          <button class="btn" id="exportBtn">↑ 导出</button>
+          <button class="btn" id="importBtn">↓ 导入</button>
+          <button class="btn btn-primary" id="refreshAllBtn">⟳ 同步</button>
+          <a href="/" class="btn">← 首页</a>
+        </div>
+      </div>
+    </header>
+
+    <div class="stats-bar">
+      <div class="stat-card">
+        <div class="stat-label">
+          <span class="stat-label-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+          </span>
+          <span>总账号数</span>
+        </div>
+        <div class="stat-value" id="statsTotal">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">
+          <span class="stat-label-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+          </span>
+          <span>已绑定代理</span>
+        </div>
+        <div class="stat-value success" id="statsBound">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">
+          <span class="stat-label-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 9.9-1"></path></svg>
+          </span>
+          <span>未绑定代理</span>
+        </div>
+        <div class="stat-value muted" id="statsUnbound">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">
+          <span class="stat-label-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect><rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect><line x1="6" y1="6" x2="6.01" y2="6"></line><line x1="6" y1="18" x2="6.01" y2="18"></line></svg>
+          </span>
+          <span>代理节点数</span>
+        </div>
+        <div class="stat-value" id="statsPool">0</div>
+      </div>
+    </div>
+
+    <main class="main-layout">
+      <!-- 代理池 -->
+      <section class="section glass">
+        <div class="section-header">
+          <h2 class="section-title">节点池</h2>
+          <div class="section-actions">
+            <span id="poolFilterTip" style="display:none;font-size:12px;color:var(--primary-light);padding:2px 8px;border-radius:6px;background:rgba(102,126,234,0.15)">筛选中</span>
+            <button class="btn btn-sm btn-secondary" id="togglePoolRevealBtn">显示</button>
+            <button class="btn btn-sm btn-primary" id="addProxyBtn">+ 添加</button>
+            <button class="btn btn-sm btn-secondary" id="batchAddProxyBtn">≡ 批量</button>
+          </div>
+        </div>
+        <div class="controls-row">
+          <div class="search-box">
+            <span class="search-icon">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            </span>
+            <input type="text" class="search-input" id="proxySearch" placeholder="搜索节点名称...">
+          </div>
+        </div>
+        <div class="scroll-container" id="proxyList">
+          <!-- 代理列表 -->
+        </div>
+      </section>
+
+      <!-- 账号列表 -->
+      <section class="section glass">
+        <div class="section-header">
+          <h2 class="section-title">账号列表</h2>
+          <div class="batch-bar" id="batchBar" style="display:none">
+            <span style="font-size:13px; font-weight:700"><span id="selectedCount">0</span> 选中</span>
+            <button class="btn btn-sm btn-primary" id="batchSetBtn">批量分发</button>
+            <button class="btn btn-sm btn-danger" id="batchClearBtn">全解绑</button>
+            <button class="btn btn-sm" id="cancelSelection">取消</button>
+          </div>
+        </div>
+        <div class="controls-row">
+          <div class="search-box">
+            <span class="search-icon">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            </span>
+            <input type="text" class="search-input" id="accountSearch" placeholder="搜索账号名、UUID...">
+          </div>
+          <select class="form-control" id="filterStatus" style="width:120px">
+            <option value="all">所有状态</option>
+            <option value="bound">已保护</option>
+            <option value="unbound">未保护</option>
+          </select>
+          <select class="form-control" id="filterProvider" style="width:120px">
+            <option value="all">所有平台</option>
+          </select>
+          <button class="btn btn-sm btn-secondary" id="toggleAccountRevealBtn">账号全显</button>
+        </div>
+        
+        <div class="table-container">
+          <div class="table-header">
+            <div><input type="checkbox" id="selectAll"></div>
+            <div>账号标识</div>
+            <div>平台</div>
+            <div>凭据文件</div>
+            <div>出站代理</div>
+            <div>使用次数</div>
+            <div>操作</div>
+          </div>
+          <div class="table-loading" id="tableLoading">
+            <div class="loading-spinner"></div>
+            <span>正在加载账号数据...</span>
+          </div>
+          <div class="table-empty" id="tableEmpty" style="display:none">
+            <div class="empty-icon">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/><path d="M7 8h10M7 12h6"/></svg>
+            </div>
+            <p class="empty-title" id="emptyTitle">暂无账号数据</p>
+            <p class="empty-desc" id="emptyDesc">请先配置 API Key 并点击同步数据</p>
+          </div>
+          <div class="vs-viewport" id="accountViewport" style="display:none">
+            <div class="vs-spacer" id="accountSpacer"></div>
+            <div class="vs-content" id="accountContent"></div>
+          </div>
+        </div>
+
+        <div class="pagination">
+          <div>显示 <span id="pageRange">0-0</span> / <span id="totalFiltered">0</span></div>
+          <div class="page-controls">
+            <span style="display:flex;align-items:center;gap:6px">每页:
+              <select id="pageSize" class="form-control" style="width: auto; padding: 4px;">
+                <option value="20">20</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+                <option value="200">200</option>
+                <option value="custom">自定义</option>
+              </select>
+              <input type="number" id="pageSizeCustom" class="form-control" min="1" max="9999"
+                style="width:70px;padding:4px;display:none" placeholder="条数">
+              <button class="btn btn-sm" id="pageSizeConfirm" style="display:none">确定</button>
+            </span>
+            <div style="display:flex; gap:6px">
+              <button class="btn btn-sm" id="prevPage">◀</button>
+              <span style="font-weight:700" id="pageNumber">1 / 1</span>
+              <button class="btn btn-sm" id="nextPage">▶</button>
+            </div>
+          </div>
+        </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Modals -->
+  <div class="modal-overlay" id="proxyModal">
+    <div class="modal glass">
+      <div class="modal-header"><h3 id="proxyModalTitle">编辑代理</h3></div>
+      <div class="modal-body">
+        <input type="hidden" id="editProxyId">
+        <div class="form-group">
+          <label class="form-label">节点名称</label>
+          <input type="text" class="form-control" id="proxyNameInput" placeholder="节点 01">
+        </div>
+        <div class="form-group">
+          <label class="form-label">代理地址</label>
+          <input type="text" class="form-control" id="proxyUrlInput" placeholder="http://ip:port">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn" onclick="closeModal('proxyModal')">取消</button>
+        <button class="btn btn-primary" id="saveProxyBtn">保存更改</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="batchAddModal">
+    <div class="modal glass">
+      <div class="modal-header"><h3>批量载入节点</h3></div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">支持格式：名称|地址 或 纯地址 (每行一个)</label>
+          <textarea class="form-control" id="batchProxyTextarea" style="height:200px; font-family:monospace"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn" onclick="closeModal('batchAddModal')">取消</button>
+        <button class="btn btn-primary" id="confirmBatchAddBtn">确认添加</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="selectProxyModal">
+    <div class="modal glass">
+      <div class="modal-header"><h3>指派代理节点</h3></div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">从池中选择</label>
+          <select class="form-control" id="proxySelectDropdown"></select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn" onclick="closeModal('selectProxyModal')">取消</button>
+        <button class="btn btn-primary" id="confirmBatchBindBtn">立即生效</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Config
+    const API = {
+      LIST: '/api/proxy-binding/list',
+      POOL: '/api/proxy-binding/proxy-pool',
+      SET: '/api/proxy-binding/set',
+      CLEAR: '/api/proxy-binding/clear',
+      BATCH_SET: '/api/proxy-binding/batch-set',
+      BATCH_CLEAR: '/api/proxy-binding/batch-clear'
+    };
+    
+    // State
+    let state = {
+      all: [],
+      filtered: [],
+      pool: [],
+      selected: new Set(),
+      currentPage: 1,
+      pageSize: 50,
+      showAccountName: false,   // 账号标识是否全显（默认脱敏）
+      showAccountProxy: false,  // 账号列表代理IP是否全显
+      showPoolProxy: false,       // 节点池URL是否全显
+      selectedPoolId: null
+    };
+    
+    const el = id => document.getElementById(id);
+
+    // --- Theme System ---
+    function initTheme() {
+      const savedTheme = localStorage.getItem('ip_proxy_theme') || 'dark';
+      document.documentElement.setAttribute('data-theme', savedTheme);
+      updateThemeUI(savedTheme);
+    }
+
+    function toggleTheme() {
+      const current = document.documentElement.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      localStorage.setItem('ip_proxy_theme', next);
+      updateThemeUI(next);
+      showToast(`已切换至 ${next === 'dark' ? '深色' : '浅色'} 模式`, 'info');
+    }
+
+    function updateThemeUI(theme) {
+      if (theme === 'dark') {
+        el('themeIconDark').style.display = 'block';
+        el('themeIconLight').style.display = 'none';
+      } else {
+        el('themeIconDark').style.display = 'none';
+        el('themeIconLight').style.display = 'block';
+      }
+    }
+
+    el('themeToggle').onclick = toggleTheme;
+    initTheme();
+
+    // --- Custom UI Systems ---
+    
+    function showToast(message, type = 'info') {
+      const container = el('toast-container');
+      const toast = document.createElement('div');
+      toast.className = `toast glass toast-${type}`;
+      
+      const icons = { success: '✓', error: '✕', info: 'i', warning: '!' };
+      
+      toast.innerHTML = `
+        <span class="toast-icon">${icons[type]}</span>
+        <span class="toast-message">${message}</span>
+        <button class="toast-close">×</button>
+      `;
+      
+      container.appendChild(toast);
+      
+      toast.querySelector('.toast-close').onclick = () => {
+        toast.style.transform = 'translateX(100%)';
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 400);
+      };
+      
+      setTimeout(() => {
+        if (toast.parentElement) {
+          toast.style.transform = 'translateX(100%)';
+          toast.style.opacity = '0';
+          setTimeout(() => toast.remove(), 400);
+        }
+      }, 4000);
+    }
+
+    function showConfirm({ title, message, confirmText = '确认', cancelText = '取消', type = 'info', onConfirm, onCancel }) {
+      const overlay = document.createElement('div');
+      overlay.className = 'dialog-overlay';
+      
+      const btnClass = type === 'danger' ? 'btn-danger' : 'btn-primary';
+      
+      overlay.innerHTML = `
+        <div class="dialog glass">
+          <div class="dialog-title">${title}</div>
+          <div class="dialog-message">${message}</div>
+          <div class="dialog-footer">
+            <button class="btn btn-cancel">${cancelText}</button>
+            <button class="btn ${btnClass} btn-confirm">${confirmText}</button>
+          </div>
+        </div>
+      `;
+      
+      document.body.appendChild(overlay);
+      
+      overlay.querySelector('.btn-confirm').onclick = () => {
+        onConfirm?.();
+        overlay.remove();
+      };
+      
+      overlay.querySelector('.btn-cancel').onclick = () => {
+        onCancel?.();
+        overlay.remove();
+      };
+      
+      overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+    }
+
+    // --- Data Engine ---
+
+    async function apiRequest(url, options = {}) {
+      const token = localStorage.getItem('ip_node_proxy_auth');
+      if (!token) {
+        showToast('请先在顶部输入 API Key 并点击「连接」', 'warning');
+        el('apikeyInput').focus();
+        return { success: false, error: 'Unauthorized' };
+      }
+      const headers = {
+        'Authorization': `Bearer ${token}`,
+        'x-api-key': token,
+        'Content-Type': 'application/json'
+      };
+      try {
+        const res = await fetch(url, { ...options, headers });
+        if (res.status === 401) {
+          el('apikeyBar').classList.remove('connected');
+          showToast('凭证无效或已过期，请重新输入 API Key', 'error');
+          el('apikeyInput').focus();
+          return { success: false, error: 'Unauthorized' };
+        }
+        return await res.json();
+      } catch (err) {
+        showToast(err.message, 'error');
+        return { success: false, error: err.message };
+      }
+    }
+
+    class VirtualScroller {
+      constructor(viewport, content, spacer, itemHeight = 52) {
+        this.viewport = viewport;
+        this.content = content;
+        this.spacer = spacer;
+        this.itemHeight = itemHeight;
+        this.data = [];
+        this.renderItem = null;
+        this.viewport.addEventListener('scroll', () => this.update());
+      }
+
+      setData(data, renderItem) {
+        this.data = data;
+        this.renderItem = renderItem;
+        if (window.innerWidth <= 900) {
+          this.spacer.style.height = '0px';
+          this.content.style.transform = 'translateY(0px)';
+          this.content.innerHTML = data.map((item, i) => renderItem(item, i)).join('');
+          return;
+        }
+        this.spacer.style.height = `${data.length * this.itemHeight}px`;
+        this.viewport.scrollTop = 0;
+        this.update();
+      }
+
+      update() {
+        if (window.innerWidth <= 900) return;
+        const scrollTop = this.viewport.scrollTop;
+        const visibleCount = Math.ceil(this.viewport.clientHeight / this.itemHeight) + 2;
+        const start = Math.floor(scrollTop / this.itemHeight);
+        const end = Math.min(start + visibleCount, this.data.length);
+        
+        const displayData = this.data.slice(start, end);
+        this.content.style.transform = `translateY(${start * this.itemHeight}px)`;
+        this.content.innerHTML = displayData.map((item, i) => this.renderItem(item, start + i)).join('');
+      }
+    }
+
+    const scroller = new VirtualScroller(el('accountViewport'), el('accountContent'), el('accountSpacer'));
+
+    async function reload() {
+      el('tableLoading').style.display = 'flex';
+      el('tableEmpty').style.display = 'none';
+      el('accountViewport').style.display = 'none';
+
+      const [accRes, poolRes] = await Promise.all([
+        apiRequest(API.LIST),
+        apiRequest(API.POOL)
+      ]);
+      
+      state.all = accRes.data || [];
+      state.pool = poolRes.data || [];
+      
+      const providers = [...new Set(state.all.map(a => a.providerType))];
+      el('filterProvider').innerHTML = '<option value="all">所有平台</option>' + 
+        providers.map(p => `<option value="${p}">${p}</option>`).join('');
+      
+      renderPool();
+      updateStats();
+      el('tableLoading').style.display = 'none';
+      el('accountViewport').style.display = '';
+      applyFilters();
+    }
+
+    function updateStats() {
+      el('statsTotal').textContent = state.all.length;
+      const bound = state.all.filter(a => a.hasProxy).length;
+      el('statsBound').textContent = bound;
+      el('statsUnbound').textContent = state.all.length - bound;
+      el('statsPool').textContent = state.pool.length;
+    }
+
+    function applyFilters() {
+      const search = el('accountSearch').value.toLowerCase();
+      const status = el('filterStatus').value;
+      const provider = el('filterProvider').value;
+      const selectedProxy = state.selectedPoolId ? state.pool.find(p => p.id === state.selectedPoolId) : null;
+      
+      state.filtered = state.all.filter(acc => {
+        const matchesSearch = !search || acc.customName.toLowerCase().includes(search) || acc.uuid.toLowerCase().includes(search);
+        const matchesStatus = status === 'all' || (status === 'bound' && acc.hasProxy) || (status === 'unbound' && !acc.hasProxy);
+        const matchesProvider = provider === 'all' || acc.providerType === provider;
+        const matchesPool = !selectedProxy || acc.proxySourceName === selectedProxy.name;
+        return matchesSearch && matchesStatus && matchesProvider && matchesPool;
+      });
+      
+      state.currentPage = 1;
+      renderPage();
+    }
+
+    function renderPage() {
+      const total = state.filtered.length;
+      const pages = Math.ceil(total / state.pageSize) || 1;
+      const startIdx = (state.currentPage - 1) * state.pageSize;
+      const endIdx = Math.min(startIdx + state.pageSize, total);
+      const pageData = state.filtered.slice(startIdx, endIdx);
+      
+      el('totalFiltered').textContent = total;
+      el('pageRange').textContent = total > 0 ? `${startIdx + 1}-${endIdx}` : '0-0';
+      el('pageNumber').textContent = `${state.currentPage} / ${pages}`;
+      el('prevPage').disabled = state.currentPage <= 1;
+      el('nextPage').disabled = state.currentPage >= pages;
+      
+      scroller.setData(pageData, (acc) => {
+        const checked = state.selected.has(acc.uuid);
+        const maskedName = state.showAccountName ? (acc.customName || '未命名') : maskName(acc.customName || '未命名');
+        const credsFile = acc.credsFile ? `<span class="text-meta" title="${acc.credsFile}">${acc.credsFile}</span>` : '<span class="badge badge-none">-</span>';
+        return `
+          <div class="account-row">
+            <div><input type="checkbox" onchange="toggleAccount('${acc.uuid}')" ${checked ? 'checked' : ''}></div>
+            <div title="${acc.customName}"><strong>${maskedName}</strong></div>
+            <div><span class="badge badge-provider">${acc.providerType}</span></div>
+            <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${credsFile}</div>
+            <div>
+              ${acc.hasProxy
+                ? `<span class="badge badge-gradient">${acc.proxySourceName || '手动'}</span><br><span class="proxy-cell-url" style="font-size:11px">${state.showAccountProxy ? acc.proxyUrl : maskProxyDisplay(acc.proxyUrl)}</span>`
+                : '<span class="badge badge-none">无代理</span>'}
+            </div>
+            <div style="font-size:12px;color:var(--text-secondary)">
+              <span title="成功次数">${acc.usageCount || 0}</span>
+              ${acc.errorCount ? `<span style="color:var(--error-color);margin-left:4px" title="错误次数">/ ${acc.errorCount}⚠</span>` : ''}
+              ${acc.lastUsed ? `<br><span style="font-size:10px;opacity:0.5">${new Date(acc.lastUsed).toLocaleDateString()}</span>` : ''}
+            </div>
+            <div style="display:flex; gap:6px">
+              <button class="btn btn-sm btn-primary" onclick="openBind('${acc.uuid}')">指派</button>
+              ${acc.hasProxy ? `<button class="btn btn-sm btn-danger" onclick="clearBinding('${acc.uuid}')">释放</button>` : ''}
+            </div>
+          </div>
+        `;
+      });
+      
+      el('selectAll').checked = pageData.length > 0 && pageData.every(a => state.selected.has(a.uuid));
+
+      if (total === 0) {
+        el('accountViewport').style.display = 'none';
+        el('tableEmpty').style.display = 'flex';
+        if (state.all.length === 0) {
+          el('emptyTitle').textContent = '暂无账号数据';
+          el('emptyDesc').textContent = '请先配置 API Key 并点击同步数据';
+        } else {
+          el('emptyTitle').textContent = '没有匹配的账号';
+          el('emptyDesc').textContent = '尝试修改搜索条件或清除筛选';
+        }
+      } else {
+        el('accountViewport').style.display = '';
+        el('tableEmpty').style.display = 'none';
+      }
+    }
+
+    function renderPool() {
+      const search = el('proxySearch').value.toLowerCase();
+      const filtered = state.pool.filter(p => p.name.toLowerCase().includes(search) || p.url.toLowerCase().includes(search));
+      
+      el('proxyList').innerHTML = filtered.map(p => `
+        <div class="proxy-card ${state.selectedPoolId === p.id ? 'selected' : ''}" onclick="togglePoolFilter('${p.id}')">
+          <div class="proxy-header">
+            <span class="proxy-name">${p.name}</span>
+            <span class="badge badge-protocol">${p.protocol}</span>
+          </div>
+          <div class="proxy-url-row">
+            <span class="proxy-url">${state.showPoolProxy ? p.url : maskProxyDisplay(p.url)}</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px">
+            <span style="font-size:11px; opacity:0.6">已绑定: ${p.usedBy?.length || 0}</span>
+            <div style="display:flex; gap:4px">
+              <button class="btn btn-sm" onclick="editProxy('${p.id}')">编辑</button>
+              <button class="btn btn-sm btn-danger" onclick="deleteProxy('${p.id}')">删除</button>
+            </div>
+          </div>
+        </div>
+      `).join('');
+      
+      el('proxySelectDropdown').innerHTML = state.pool.map(p => `<option value="${p.url}">${p.name}</option>`).join('');
+    }
+
+    // --- Actions ---
+    
+    window.togglePoolFilter = (id) => {
+      state.selectedPoolId = state.selectedPoolId === id ? null : id;
+      el('poolFilterTip').style.display = state.selectedPoolId ? '' : 'none';
+      renderPool();
+      applyFilters();
+    };
+
+    function toggleAccount(uuid) {
+      if (state.selected.has(uuid)) state.selected.delete(uuid);
+      else state.selected.add(uuid);
+      updateBatchBar();
+    }
+
+    function updateBatchBar() {
+      el('batchBar').style.display = state.selected.size > 0 ? 'flex' : 'none';
+      el('selectedCount').textContent = state.selected.size;
+    }
+
+    function openModal(id) { el(id).classList.add('show'); }
+    function closeModal(id) { el(id).classList.remove('show'); }
+
+    window.openBind = (uuid) => {
+      state.selected.clear();
+      state.selected.add(uuid);
+      openModal('selectProxyModal');
+    };
+
+    window.clearBinding = (uuid) => {
+      showConfirm({
+        title: '解除绑定',
+        message: '确定要释放该账号的代理资源吗？',
+        confirmText: '确认释放',
+        type: 'danger',
+        onConfirm: async () => {
+          const res = await apiRequest(API.CLEAR, { method: 'DELETE', body: JSON.stringify({ uuid }) });
+          if (res.success) { showToast('解绑成功', 'success'); reload(); }
+        }
+      });
+    };
+
+    el('batchSetBtn').onclick = () => openModal('selectProxyModal');
+    el('confirmBatchBindBtn').onclick = async () => {
+      const proxyUrl = el('proxySelectDropdown').value;
+      if (!proxyUrl) {
+        showToast('请先在代理池中添加代理，再进行指派', 'warning');
+        return;
+      }
+      const uuids = Array.from(state.selected);
+      if (uuids.length === 0) {
+        showToast('没有选中任何账号', 'warning');
+        return;
+      }
+      const btn = el('confirmBatchBindBtn');
+      btn.disabled = true;
+      btn.textContent = '指派中...';
+      const res = await apiRequest(API.BATCH_SET, {
+        method: 'POST',
+        body: JSON.stringify({ uuids, proxyUrl })
+      });
+      btn.disabled = false;
+      btn.textContent = '立即生效';
+      if (res.success) {
+        if (res.count === 0) {
+          showToast('未找到匹配的账号，请刷新后重试', 'warning');
+        } else {
+          showToast(`成功指派 ${res.count} 个账号`, 'success');
+          closeModal('selectProxyModal');
+          state.selected.clear();
+          updateBatchBar();
+          reload();
+        }
+      } else {
+        showToast(res.error || '指派失败，请检查代理地址格式', 'error');
+      }
+    };
+
+    el('batchClearBtn').onclick = () => {
+      showConfirm({
+        title: '批量解绑',
+        message: `确定要释放选中的 ${state.selected.size} 个账号的代理吗？`,
+        confirmText: '全部解绑',
+        type: 'danger',
+        onConfirm: async () => {
+          const res = await apiRequest(API.BATCH_CLEAR, {
+            method: 'POST',
+            body: JSON.stringify({ uuids: Array.from(state.selected) })
+          });
+          if (res.success) {
+            showToast('批量操作完成', 'success');
+            state.selected.clear();
+            updateBatchBar();
+            reload();
+          }
+        }
+      });
+    };
+
+    el('saveProxyBtn').onclick = async () => {
+      const id = el('editProxyId').value;
+      const name = el('proxyNameInput').value;
+      const url = el('proxyUrlInput').value;
+      const res = await apiRequest(id ? `${API.POOL}/${id}` : API.POOL, {
+        method: id ? 'PUT' : 'POST',
+        body: JSON.stringify({ name, url })
+      });
+      if (res.success) {
+        showToast('保存成功', 'success');
+        closeModal('proxyModal');
+        reload();
+      }
+    };
+
+    window.editProxy = (id) => {
+      const p = state.pool.find(x => x.id === id);
+      el('proxyModalTitle').textContent = '编辑节点';
+      el('editProxyId').value = id;
+      el('proxyNameInput').value = p.name;
+      el('proxyUrlInput').value = p.url;
+      openModal('proxyModal');
+    };
+
+    window.deleteProxy = (id) => {
+      showConfirm({
+        title: '删除节点',
+        message: '确定要从池中移除此节点吗？已绑定的账号将失去连接。',
+        confirmText: '确认移除',
+        type: 'danger',
+        onConfirm: async () => {
+          const res = await apiRequest(`${API.POOL}/${id}`, { method: 'DELETE' });
+          if (res.success) { showToast('节点已移除', 'success'); reload(); }
+        }
+      });
+    };
+
+    el('confirmBatchAddBtn').onclick = async () => {
+      const text = el('batchProxyTextarea').value.trim();
+      const proxies = text.split('\n').filter(l => l.trim()).map(line => {
+        if (line.includes('|')) {
+          const [n, u] = line.split('|');
+          return { name: n.trim(), url: u.trim() };
+        }
+        return { url: line.trim() };
+      });
+      const res = await apiRequest(API.POOL, { method: 'POST', body: JSON.stringify({ proxies }) });
+      if (res.success) {
+        showToast(`成功载入 ${res.count} 个节点`, 'success');
+        closeModal('batchAddModal');
+        reload();
+      }
+    };
+
+    // --- Utility ---
+    function maskName(name) {
+      if (!name || name.length <= 6) return name;
+      return name.slice(0, 3) + '***' + name.slice(-3);
+    }
+
+    // 代理 URL 脱敏：隐藏密码 + IP 中间两段
+    // socks://user:pass@1.2.3.4:9000 → socks://user:****@1.***.***4:9000
+    function maskProxyDisplay(url) {
+      if (!url) return '';
+      // 先隐藏密码
+      let s = url.replace(/(:\/\/[^:@]+:)[^@]+(@)/, '$1****$2');
+      // 再脱敏 IP：保留第一段和最后一段，中间两段替换为 ***
+      s = s.replace(/(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/, function(m, a, b, c, d) {
+        return a + '.***.***.' + d;
+      });
+      return s;
+    }
+
+    // --- API Key 配置 ---
+    function initApiKey() {
+      const saved = localStorage.getItem('ip_node_proxy_auth');
+      if (saved) {
+        el('apikeyInput').value = saved;
+        el('apikeyLogoutBtn').style.display = '';
+        el('apikeyBar').classList.add('connected');
+      }
+    }
+
+    el('apikeyConfirmBtn').onclick = () => {
+      const val = el('apikeyInput').value.trim();
+      if (!val) { showToast('请输入 API Key', 'warning'); return; }
+      localStorage.setItem('ip_node_proxy_auth', val);
+      el('apikeyLogoutBtn').style.display = '';
+      el('apikeyBar').classList.add('connected');
+      showToast('凭证已保存，正在连接...', 'success');
+      reload();
+    };
+
+    el('apikeyToggleBtn').onclick = () => {
+      const input = el('apikeyInput');
+      input.type = input.type === 'password' ? 'text' : 'password';
+      el('apikeyToggleBtn').textContent = input.type === 'password' ? '显示' : '隐藏';
+    };
+
+    el('apikeyLogoutBtn').onclick = () => {
+      localStorage.removeItem('ip_node_proxy_auth');
+      el('apikeyInput').value = '';
+      el('apikeyLogoutBtn').style.display = 'none';
+      el('apikeyBar').classList.remove('connected');
+      showToast('凭证已清除', 'info');
+    };
+
+    el('apikeyInput').onkeydown = (e) => {
+      if (e.key === 'Enter') el('apikeyConfirmBtn').click();
+    };
+
+    initApiKey();
+
+    el('refreshAllBtn').onclick = reload;
+    el('accountSearch').oninput = () => { clearTimeout(this.t); this.t = setTimeout(applyFilters, 300); };
+    el('proxySearch').oninput = renderPool;
+    el('filterStatus').onchange = applyFilters;
+    el('filterProvider').onchange = applyFilters;
+    el('pageSize').onchange = (e) => {
+      if (e.target.value === 'custom') {
+        el('pageSizeCustom').style.display = '';
+        el('pageSizeConfirm').style.display = '';
+        el('pageSizeCustom').focus();
+      } else {
+        el('pageSizeCustom').style.display = 'none';
+        el('pageSizeConfirm').style.display = 'none';
+        if (e.target.value !== '__current__') {
+          state.pageSize = parseInt(e.target.value);
+        }
+        state.currentPage = 1;
+        renderPage();
+      }
+    };
+
+    function applyCustomPageSize() {
+      const v = parseInt(el('pageSizeCustom').value);
+      if (!v || v < 1) { showToast('请输入有效条数', 'warning'); return; }
+      state.pageSize = v;
+      state.currentPage = 1;
+      el('pageSizeConfirm').style.display = 'none';
+      
+      const select = el('pageSize');
+      el('pageSizeCustom').style.display = 'none';
+      
+      if (['20', '50', '100', '200'].includes(v.toString())) {
+        select.value = v.toString();
+        const currentOpt = select.querySelector('option[value="__current__"]');
+        if (currentOpt) currentOpt.remove();
+      } else {
+        let currentOpt = select.querySelector('option[value="__current__"]');
+        if (!currentOpt) {
+          currentOpt = document.createElement('option');
+          currentOpt.value = '__current__';
+          const customOpt = select.querySelector('option[value="custom"]');
+          select.insertBefore(currentOpt, customOpt);
+        }
+        currentOpt.textContent = `当前: ${v}条`;
+        select.value = '__current__';
+      }
+      
+      renderPage();
+    }
+
+    el('pageSizeConfirm').onclick = applyCustomPageSize;
+    el('pageSizeCustom').onkeydown = (e) => { if (e.key === 'Enter') applyCustomPageSize(); };
+    el('prevPage').onclick = () => { if (state.currentPage > 1) { state.currentPage--; renderPage(); } };
+    el('nextPage').onclick = () => { if (state.currentPage < Math.ceil(state.filtered.length / state.pageSize)) { state.currentPage++; renderPage(); } };
+    el('selectAll').onchange = (e) => {
+      const start = (state.currentPage - 1) * state.pageSize;
+      const end = Math.min(start + state.pageSize, state.filtered.length);
+      const data = state.filtered.slice(start, end);
+      data.forEach(a => e.target.checked ? state.selected.add(a.uuid) : state.selected.delete(a.uuid));
+      updateBatchBar();
+      renderPage();
+    };
+
+    el('addProxyBtn').onclick = () => {
+      el('proxyModalTitle').textContent = '新增节点';
+      el('editProxyId').value = '';
+      el('proxyNameInput').value = '';
+      el('proxyUrlInput').value = '';
+      openModal('proxyModal');
+    };
+    el('batchAddProxyBtn').onclick = () => openModal('batchAddModal');
+    el('cancelSelection').onclick = () => { state.selected.clear(); updateBatchBar(); renderPage(); };
+
+    el('togglePoolRevealBtn').onclick = () => {
+      state.showPoolProxy = !state.showPoolProxy;
+      el('togglePoolRevealBtn').textContent = state.showPoolProxy ? '隐藏' : '显示';
+      renderPool();
+    };
+
+    el('toggleAccountRevealBtn').onclick = () => {
+      state.showAccountName = !state.showAccountName;
+      el('toggleAccountRevealBtn').textContent = state.showAccountName ? '账号脱敏' : '账号全显';
+      renderPage();
+    };
+
+    el('exportBtn').onclick = () => {
+      const data = JSON.stringify({ pool: state.pool, bindings: state.all.filter(a => a.hasProxy).map(a => ({ uuid: a.uuid, url: a.proxyUrl })) }, null, 2);
+      const blob = new Blob([data], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'proxy-config.json'; a.click();
+    };
+
+    el('importBtn').onclick = () => {
+      const i = document.createElement('input'); i.type = 'file'; i.accept = '.json';
+      i.onchange = (e) => {
+        const reader = new FileReader();
+        reader.onload = async (ev) => {
+          const data = JSON.parse(ev.target.result);
+          if (data.pool) await apiRequest(API.POOL, { method: 'POST', body: JSON.stringify({ proxies: data.pool }) });
+          showToast('导入成功', 'success'); reload();
+        };
+        reader.readAsText(e.target.files[0]);
+      };
+      i.click();
+    };
+
+    reload();
+  </script>
+</body>
+</html>
